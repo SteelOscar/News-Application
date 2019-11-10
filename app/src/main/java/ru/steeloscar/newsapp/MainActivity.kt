@@ -497,7 +497,7 @@ class MainActivity : AppCompatActivity() {
                         try {
                             customTabsIntent.launchUrl(this@MainActivity, Uri.parse(listOfModel[position].url))
                         } catch (e: ActivityNotFoundException) {
-                            Toast.makeText(this@MainActivity, "Google Chrome does not exists. Commit in develop branch", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, "Google Chrome does not exists.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 })
