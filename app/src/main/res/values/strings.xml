@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">News</string>
+    <string name="url">https://newsapi.org/v2/everything?language=ru&amp;pageSize=5&amp;</string>
+    <string name="behavior">android.support.design.widget.AppBarLayout$ScrollingViewBehavior</string>
+</resources>
