@@ -3,6 +3,7 @@
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
@@ -498,7 +499,10 @@ class MainActivity : AppCompatActivity() {
                             customTabsIntent.launchUrl(this@MainActivity, Uri.parse(listOfModel[position].url))
                         } catch (e: ActivityNotFoundException) {
                             Toast.makeText(this@MainActivity, "Google Chrome does not exists.", Toast.LENGTH_SHORT).show()
+                            val intent = Intent(this@MainActivity, WebBrowserActivity::class.java)
 
+                            intent.putExtra("url", listOfModel[position].url)
+                            startActivity(intent)
                         }
                     }
                 })
