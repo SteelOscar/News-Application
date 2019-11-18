@@ -2,4 +2,8 @@
     <string name="app_name">News</string>
     <string name="url">https://newsapi.org/v2/everything?language=ru&amp;pageSize=5&amp;</string>
     <string name="behavior">android.support.design.widget.AppBarLayout$ScrollingViewBehavior</string>
+    <string name="https_connection">Безопасное подключение</string>
+    <string name="https_description">Информация, которую вы сообщаете этому сайту (например, пароли и номера банковских карт), защищена.</string>
+    <string name="http_connection">Подключение к сайту не защищено</string>
+    <string name="http_description">Не сообщайте этому сайту конфиденциальную информацию (например, пароли и номера банковских карт). К ней могут получить доступ злоумышленники.</string>
 </resources>

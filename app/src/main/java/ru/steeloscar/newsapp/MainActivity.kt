@@ -34,6 +34,7 @@ import ru.steeloscar.newsapp.Entity.SavedNewsEntity
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
+import java.lang.Exception
 import java.net.MalformedURLException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -81,7 +82,7 @@ class MainActivity : AppCompatActivity() {
         db = Room.databaseBuilder(this, NewsDB::class.java, "my-database").build()
         savedNewsDao = db.getSavedNewsDAO()
 
-        createCustomTabs()
+//        createCustomTabs()
 
         restoreSavedNews(this)
 
@@ -183,7 +184,7 @@ class MainActivity : AppCompatActivity() {
                 if (!isRefreshed or !isLoaded) {
                     if (!isLoaded) {
                         listOfModel.clear()
-                        refreshLayout.isRefreshing = false
+                        runOnUiThread { refreshLayout.isRefreshing = false }
                         isLoaded = true
                         isRefreshed = false
                     }
@@ -229,7 +230,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } else {
                 runOnUiThread {
-                    Log.d("responce", connection.responseCode.toString())
+                    Log.d("response", connection.responseCode.toString())
                 }
             }
 
@@ -256,10 +257,10 @@ class MainActivity : AppCompatActivity() {
                     listOfModel[index].image =
                         BitmapFactory.decodeStream(stream, null, options) as Bitmap
                     stream.close()
-                } catch (e: MalformedURLException) {
-                    Log.e("exception", e.message)
-                } catch (e: FileNotFoundException) {
-                    Log.e("exception", e.message)
+                } catch (e: Exception) {
+                    when(e) {
+                        is MalformedURLException, is FileNotFoundException -> Log.e("exception", e.message.toString())
+                    }
                 }
             }
         )
@@ -496,9 +497,9 @@ class MainActivity : AppCompatActivity() {
                 recyclerAdapter = RecyclerAdapter(listOfModel, object : CustomItemClickListener {
                     override fun onItemClick(v: View, position: Int) {
                         try {
+                            createCustomTabs()
                             customTabsIntent.launchUrl(this@MainActivity, Uri.parse(listOfModel[position].url))
                         } catch (e: ActivityNotFoundException) {
-                            Toast.makeText(this@MainActivity, "Google Chrome does not exists.", Toast.LENGTH_SHORT).show()
                             val intent = Intent(this@MainActivity, WebBrowserActivity::class.java)
 
                             intent.putExtra("url", listOfModel[position].url)
