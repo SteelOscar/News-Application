@@ -4,13 +4,14 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapFactory.Options
 import android.graphics.Color
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.util.JsonReader
@@ -35,7 +36,6 @@ import ru.steeloscar.newsapp.Entity.SavedNewsEntity
 import java.io.ByteArrayOutputStream
 import java.io.FileNotFoundException
 import java.io.InputStreamReader
-import java.lang.Exception
 import java.net.MalformedURLException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
@@ -64,11 +64,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setTheme(R.style.AppTheme)
-        setContentView(R.layout.activity_main)
 
-        setSupportActionBar(toolBar)
-        title = "Новости"
+        setContentView(R.layout.activity_main)
 
         listOfModel = ArrayList()
         myRecyclerView = findViewById(R.id.recycler_view)
@@ -87,6 +84,12 @@ class MainActivity : AppCompatActivity() {
 //        createCustomTabs()
 
         restoreSavedNews(this)
+
+        setTheme(R.style.AppTheme)
+
+
+        setSupportActionBar(toolBar)
+        title = "Новости"
 
         recycler_view.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -396,9 +399,22 @@ class MainActivity : AppCompatActivity() {
 
     private fun isNetworkAvailable(context: MainActivity): Boolean {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetworkInfo = cm.activeNetworkInfo
 
-        return activeNetworkInfo != null && activeNetworkInfo.isConnectedOrConnecting
+        if (Build.VERSION.SDK_INT < 23) {
+            val activeNetworkInfo = cm.activeNetworkInfo
+
+            return activeNetworkInfo != null && activeNetworkInfo.isConnected
+        } else {
+            val network = cm.activeNetwork
+
+            if (network != null) {
+                val networkConnection = cm.getNetworkCapabilities(network)
+
+                return (networkConnection.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) or networkConnection.hasTransport(NetworkCapabilities.TRANSPORT_WIFI))
+            }
+        }
+
+        return false
     }
 
 
@@ -442,6 +458,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveStateNews(listModel: ArrayList<RecyclerViewModel>) {
         Thread(Runnable {
+            val startTime = System.currentTimeMillis()
             savedNewsDao.deleteAll()
             for (model in listModel) {
                 val bitmap = model.image
@@ -459,6 +476,7 @@ class MainActivity : AppCompatActivity() {
                 )
                 savedNewsDao.insertAll(entity)
             }
+            Log.d("service", "${System.currentTimeMillis() - startTime}")
         }).start()
     }
 
@@ -602,5 +620,6 @@ class MainActivity : AppCompatActivity() {
             .setToolbarColor(Color.DKGRAY)
             .build()
     }
+
 
 }
