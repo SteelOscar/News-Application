@@ -23,4 +23,8 @@
         <item name="android:background">#FFFFFF</item>
     </style>
 
+    <style name="splashTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_layout</item>
+    </style>
+
 </resources>
