@@ -3,7 +3,6 @@ package ru.steeloscar.newsapp
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
@@ -17,7 +16,10 @@ import android.text.style.StyleSpan
 import android.view.KeyEvent
 import android.view.View
 import android.view.animation.AnimationUtils
-import android.webkit.*
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_web_browser.*
@@ -101,11 +103,7 @@ class WebBrowserActivity : AppCompatActivity() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 web_progress_bar.visibility = View.VISIBLE
                 super.onPageStarted(view, url, favicon)
-            }
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = false
 
-            override fun onPageFinished(view: WebView?, url: String?) {
-                web_progress_bar.visibility = View.GONE
                 toolbarImageConnection.visibility = View.VISIBLE
 
                 toolbarImageConnection.setImageResource(
@@ -113,11 +111,18 @@ class WebBrowserActivity : AppCompatActivity() {
                     else R.drawable.ic_error_outline_white_20dp
                 )
 
-                toolbarTextTitle.text = view?.title
+                toolbarTextTitle.text = "Загрузка..."
 
                 toolbarTextUrl.text = url
 
                 urlSite = url
+
+            }
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?) = false
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                web_progress_bar.visibility = View.GONE
+                toolbarTextTitle.text = view?.title
                 super.onPageFinished(view, url)
             }
 

@@ -16,9 +16,11 @@ import android.os.Bundle
 import android.os.Handler
 import android.util.JsonReader
 import android.util.Log
+import android.view.KeyEvent.KEYCODE_ENTER
 import android.view.MotionEvent
 import android.view.View
 import android.view.animation.AnimationUtils
+import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsClient
@@ -38,7 +40,11 @@ import java.io.FileNotFoundException
 import java.io.InputStreamReader
 import java.net.MalformedURLException
 import java.net.URL
+import java.security.KeyStore
+import java.security.cert.CertificateFactory
 import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManagerFactory
 
 
 class MainActivity : AppCompatActivity() {
@@ -52,7 +58,6 @@ class MainActivity : AppCompatActivity() {
     private var pageNumber = 1
     private var startTime = System.currentTimeMillis()
     private var elapsedTime: Long = 0
-    private var fabState = true
     private lateinit var db: NewsDB
     private lateinit var savedNewsDao: SavedNewsDAO
     private var isLoaded = false
@@ -61,11 +66,39 @@ class MainActivity : AppCompatActivity() {
     private var customTabsSession: CustomTabsSession? = null
     private lateinit var customTabsIntent: CustomTabsIntent
     private val CUSTOM_PACKAGE = "com.android.chrome"
+    private val APP_PREFERENCES = "settings"
+    private val APP_PREFERENCES_FIRST_START = "firstStart"
+    private var submitSearch = false
+    private var task = "sources=rt"
+    private var token = "b81c1cca8d3e4f418235e043fc37e532"
+    private var isSearch = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        setTheme(R.style.AppTheme)
         setContentView(R.layout.activity_main)
+
+        val settings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE)
+        val firstStart = settings.getBoolean(APP_PREFERENCES_FIRST_START, true)
+
+        if (firstStart) {
+            if (isNetworkAvailable(this)) {
+                refreshLayout.isRefreshing = true
+                networkApiTask(task, pageNumber, token)
+
+                val editor = settings.edit()
+                editor.putBoolean(APP_PREFERENCES_FIRST_START, false)
+                editor.apply()
+            } else {
+                Toast.makeText(
+                    this,
+                    "При загрузке данных произошла ошибка. Проверьте ваше подключение к сети.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                Handler().postDelayed({ refreshLayout.isRefreshing = false }, 1000)
+            }
+
+        }
 
         listOfModel = ArrayList()
         myRecyclerView = findViewById(R.id.recycler_view)
@@ -81,15 +114,12 @@ class MainActivity : AppCompatActivity() {
         db = Room.databaseBuilder(this, NewsDB::class.java, "my-database").build()
         savedNewsDao = db.getSavedNewsDAO()
 
-//        createCustomTabs()
-
         restoreSavedNews(this)
-
-        setTheme(R.style.AppTheme)
 
 
         setSupportActionBar(toolBar)
-        title = "Новости"
+//        title = "Новости"
+        tb_title.text = "Новости"
 
         recycler_view.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -100,11 +130,7 @@ class MainActivity : AppCompatActivity() {
                     if (isNetworkAvailable(this@MainActivity)) {
                         itemPosUpdate += dPos
                         pageNumber++
-                        networkApiTask(
-                            "sources=rbc",
-                            pageNumber,
-                            "b81c1cca8d3e4f418235e043fc37e532"
-                        )
+                        networkApiTask(task, pageNumber, token)
                     } else {
                         Toast.makeText(
                             this@MainActivity,
@@ -118,25 +144,17 @@ class MainActivity : AppCompatActivity() {
         })
 
 
-
-        fab_main.setOnClickListener {
-            fabState = if (fabState) fabRotateAnim(
-                R.drawable.ic_close_black_56dp,
-                fabState
-            ) else fabRotateAnim(R.drawable.build24px, fabState)
-        }
-
-        fab_children1.setOnClickListener {
-
-        }
-
-
         refreshLayout.setOnRefreshListener {
             if (isNetworkAvailable(this)) {
-                title = "Обновление..."
+                tb_title.text = "Обновление..."
                 isRefreshed = true
-                Log.d("url", isLoaded.toString())
-                networkApiTask("sources=rbc", pageNumber, "b81c1cca8d3e4f418235e043fc37e532")
+                if (isSearch) {
+                    isLoaded = false
+                    itemPosUpdate = 2
+                    task = "sources=rt"
+                    isSearch = false
+                }
+                networkApiTask(task, pageNumber, token)
             } else {
                 Toast.makeText(
                     this,
@@ -147,20 +165,20 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
+        tb_search.setOnClickListener {
+            searchNews()
+        }
+
+        tb_search_text.setOnKeyListener { v, keyCode, event ->
+            if (keyCode == KEYCODE_ENTER) {
+                searchNews()
+                true
+            }
+            false
+        }
+
         toolBar.setOnTouchListener(DoubleClickListener())
-    }
-
-    /*
-    Rotate floating action button, if it pressed. Depending on the state, change its icon.
-     */
-
-    private fun fabRotateAnim(res_fab_icon: Int, fabState: Boolean): Boolean {
-        fab_main.startAnimation(AnimationUtils.loadAnimation(this, R.anim.rotate_fab_icon))
-        Handler().postDelayed({
-            fab_main.setImageResource(res_fab_icon)
-            if (fabState) fab_children1.show() else fab_children1.hide()
-        }, 600)
-        return !fabState
     }
 
     /*
@@ -174,7 +192,33 @@ class MainActivity : AppCompatActivity() {
             if (isRefreshed and isLoaded) pageNumber = 1
             val request = "${getString(R.string.url)}$task&page=$pageNumber&apiKey=$token"
             val url = URL(request)
+
+            val cf: CertificateFactory = CertificateFactory.getInstance("X.509")
+
+            val inputStream = resources.openRawResource(R.raw.my)
+            val certificate = cf.generateCertificate(inputStream)
+
+// Create a KeyStore containing our trusted CAs
+            val keyStoreType = KeyStore.getDefaultType()
+            val keyStore = KeyStore.getInstance(keyStoreType).apply {
+                load(null, null)
+                setCertificateEntry("ca", certificate)
+            }
+
+// Create a TrustManager that trusts the CAs inputStream our KeyStore
+            val tmfAlgorithm: String = TrustManagerFactory.getDefaultAlgorithm()
+            val tmf: TrustManagerFactory = TrustManagerFactory.getInstance(tmfAlgorithm).apply {
+                init(keyStore)
+            }
+
+// Create an SSLContext that uses our TrustManager
+            val context: SSLContext = SSLContext.getInstance("TLS").apply {
+                init(null, tmf.trustManagers, null)
+            }
+
             val connection = url.openConnection() as HttpsURLConnection
+            connection.sslSocketFactory = context.socketFactory
+
             connection.connect()
 
             if (connection.responseCode == 200) {
@@ -197,7 +241,8 @@ class MainActivity : AppCompatActivity() {
                     listOfModel.addAll(tempArrayList)
 
                     runOnUiThread {
-                        title = "Новости"
+                        tb_title.text = "Новости"
+//                        title = "Новости"
                         recyclerAdapter.mode = false
                         recyclerAdapter.notifyDataSetChanged()
                         for (index in listOfModel.count() - tempArrayList.count() until listOfModel.count()) {
@@ -215,13 +260,12 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    Log.d("url", "position = $position")
-
                     if (position > 0) listOfModel.addAll(0, ArrayList(tempArrayList.take(position)))
 
                     refreshLayout.isRefreshing = false
                     runOnUiThread {
-                        title = "Новости"
+                        tb_title.text = "Новости"
+//                        title = "Новости"
                         recyclerAdapter.mode = false
 //                        recyclerAdapter.notifyDataSetChanged()
                         if (position > 0) {
@@ -257,8 +301,6 @@ class MainActivity : AppCompatActivity() {
                 try {
                     val stream = URL(url).openStream()
 
-                    options.inJustDecodeBounds = false
-                    options.inSampleSize = calculateInSampleSize(options, 300, 150)
                     listOfModel[index].image =
                         BitmapFactory.decodeStream(stream, null, options) as Bitmap
                     stream.close()
@@ -370,27 +412,8 @@ class MainActivity : AppCompatActivity() {
             title,
             detail,
             url,
-            publishedAt
+            convertDate(publishedAt)
         )
-    }
-
-    /*
-    Don't know what write in this comment. Probably, this method calculate resolution of picture.
-     */
-
-    private fun calculateInSampleSize(options: Options, reqWidth: Int, reqHeight: Int): Int {
-        val height = options.outHeight
-        val width = options.outWidth
-        var inSampleSize = 1
-
-        if ((height > reqHeight) or (width > reqWidth)) {
-
-            while ((height / (2 * inSampleSize) > reqHeight) and (width / (2 * inSampleSize) > reqWidth)) {
-                inSampleSize *= 2
-            }
-
-        }
-        return inSampleSize
     }
 
     /*
@@ -458,7 +481,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveStateNews(listModel: ArrayList<RecyclerViewModel>) {
         Thread(Runnable {
-            val startTime = System.currentTimeMillis()
             savedNewsDao.deleteAll()
             for (model in listModel) {
                 val bitmap = model.image
@@ -476,7 +498,6 @@ class MainActivity : AppCompatActivity() {
                 )
                 savedNewsDao.insertAll(entity)
             }
-            Log.d("service", "${System.currentTimeMillis() - startTime}")
         }).start()
     }
 
@@ -512,10 +533,9 @@ class MainActivity : AppCompatActivity() {
 
             runOnUiThread {
                 listOfModel.addAll(listViewModel)
-                Log.d("url", listOfModel.count().toString())
                 //Override the click function of a RecyclerView element in custom listener interface.
                 recyclerAdapter = RecyclerAdapter(listOfModel, object : CustomItemClickListener {
-                    override fun onItemClick(v: View, position: Int) {
+                    override fun onItemClick(position: Int) {
                         try {
                             createCustomTabs()
                             customTabsIntent.launchUrl(this@MainActivity, Uri.parse(listOfModel[position].url))
@@ -621,5 +641,43 @@ class MainActivity : AppCompatActivity() {
             .build()
     }
 
+    private fun convertDate(date: String) = "${date.substring(11,19)} ${date.substring(0,10)}"
+
+    private fun searchNews() {
+        tb_search.startAnimation(AnimationUtils.loadAnimation(this, R.anim.image_click))
+        if (!submitSearch) {
+            tb_search_text.visibility = View.VISIBLE
+            tb_search_text.startAnimation(AnimationUtils.loadAnimation(this, R.anim.alpha_anim_search_text))
+            tb_search_text.requestFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).toggleSoftInput(InputMethodManager.SHOW_FORCED, 0)
+            tb_search.setImageResource(R.drawable.ic_check_black_24dp)
+            submitSearch = true
+        } else {
+            if (tb_search_text.text.isNotEmpty()) {
+                if (isNetworkAvailable(this)) {
+                    tb_title.text = "Обновление..."
+                    isSearch = true
+                    refreshLayout.isRefreshing = true
+                    isRefreshed = false
+                    isLoaded = false
+                    itemPosUpdate = 2
+                    task = "q=${tb_search_text.text}"
+                    networkApiTask(task, pageNumber, token)
+                    (getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager).hideSoftInputFromWindow(tb_search_text.windowToken, 0)
+                    tb_search_text.clearFocus()
+                    tb_search.setImageResource(R.drawable.ic_search_black_24dp)
+                    tb_search_text.visibility = View.GONE
+                    submitSearch = false
+                } else {
+                    Toast.makeText(
+                        this,
+                        "При загрузке данных произошла ошибка. Проверьте ваше подключение к сети.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    Handler().postDelayed({ refreshLayout.isRefreshing = false }, 1000)
+                }
+            }
+        }
+    }
 
 }

@@ -8,15 +8,59 @@
     tools:context=".MainActivity">
 
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolBar"
+            style="@style/Toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll|enterAlways"
-            style="@style/Toolbar"/>
+            app:layout_scrollFlags="scroll|enterAlways">
+
+            <RelativeLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <TextView
+                    android:id="@+id/tb_title"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:textSize="20sp"
+                    android:textColor="@color/black"
+                    android:textStyle="bold"/>
+
+                <EditText
+                    android:id="@+id/tb_search_text"
+                    android:layout_width="150dp"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:textSize="15sp"
+                    android:textColor="@color/black"
+                    android:textAlignment="center"
+                    android:layout_toLeftOf="@+id/tb_search"
+                    android:layout_toStartOf="@+id/tb_search"
+                    android:maxLines="1"
+                    android:visibility="gone"
+                    android:paddingRight="5dp"
+                    android:paddingEnd="5dp" />
+
+                <ImageView
+                    android:id="@+id/tb_search"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_alignParentEnd="true"
+                    android:src="@drawable/ic_search_black_24dp"
+                    android:paddingEnd="10dp"
+                    android:paddingRight="10dp" />
+
+            </RelativeLayout>
+
+        </androidx.appcompat.widget.Toolbar>
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -40,40 +84,6 @@
             app:layout_constraintStart_toStartOf="parent" />
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:layout_width="70dp"
-        android:layout_height="200dp"
-        android:layout_marginRight="10dp"
-        android:layout_gravity="right|bottom">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="bottom|center"
-            android:orientation="vertical">
-
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab_children1"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:visibility="invisible"
-                app:layout_constraintBottom_toTopOf="@+id/fab_main"
-                app:fabSize="mini"
-                android:src="@drawable/ic_settings_black_24dp"
-                app:backgroundTint="#FFFFFF"/>
-
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fab_main"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:src="@drawable/build24px"
-                app:backgroundTint="#FFFFFF" />
-        </LinearLayout>
-
-    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

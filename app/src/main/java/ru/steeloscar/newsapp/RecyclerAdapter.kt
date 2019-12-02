@@ -2,23 +2,20 @@ package ru.steeloscar.newsapp
 
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
-import android.content.Context
-import android.content.Intent
-import android.util.Log
 import android.util.SparseArray
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 
 
-class RecyclerAdapter(viewList: ArrayList<RecyclerViewModel>,clickListener: CustomItemClickListener): RecyclerView.Adapter<RecyclerAdapter.ViewHolder>() {
+class RecyclerAdapter(
+    private val viewList: ArrayList<RecyclerViewModel>,
+    private val clickListener: CustomItemClickListener
+): RecyclerView.Adapter<RecyclerAdapter.ViewHolder>() {
 
-    private val viewList = viewList
-    private val clickListener = clickListener
     private var onAttach = true
     private val DURATION = 500.toLong()
     var mode = false
@@ -41,7 +38,7 @@ class RecyclerAdapter(viewList: ArrayList<RecyclerViewModel>,clickListener: Cust
         holder.findTextViewById(R.id.item_date).text = viewList[position].publishedAt
 
         holder.itemView.setOnClickListener {
-            clickListener.onItemClick(it, holder.position)
+            clickListener.onItemClick(holder.position)
         }
 
         if (mode) setAnimation(holder.itemView, position )
