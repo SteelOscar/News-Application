@@ -1,5 +1,5 @@
 # News-Application app for Android
-
+API 15 and higher.
 ## Screenshots:
 <p align="left">
 <img src="https://github.com/SteelOscar/News-Application/blob/master/Images/1.png" width="200" title="hover text">
